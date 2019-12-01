@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 const INPUT_FILE = 'day1input.txt';
 
 echo 'Part 1: ' . part1() . "\n";
