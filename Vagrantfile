@@ -7,6 +7,7 @@ echo Installing PHP...
 add-apt-repository ppa:ondrej/php
 apt-get update
 apt-get --assume-yes install php7.4
+apt-get --assume-yes install php-xdebug
 SCRIPT
 
 Vagrant.configure(2) do |config|
