@@ -24,15 +24,16 @@ function loadProgram(string $filepath): array
     }, $lines);
 }
 
-function runProgram(array &$registers, int $input): int
+function runProgram(array $registers, array $inputs): int
 {
     $stepToExecute = 0;
     $output = 0;
+    $outputSet = false;
 
     while ($registers[$stepToExecute] != OP_EXIT) {
         $op = (string) $registers[$stepToExecute];
         $opCode = (int) substr($op, -2);
-        // print "Execute $opCode from position $stepToExecute\n";
+        //print "Execute $opCode from position $stepToExecute\n";
         $params = getParams($opCode, $op, $stepToExecute, $registers);
 
 
@@ -47,11 +48,12 @@ function runProgram(array &$registers, int $input): int
                 break;
 
             case OP_INPUT:
-                $registers[$params[0]] = $input;
+                $registers[$params[0]] = array_shift($inputs);
                 break;
 
             case OP_OUTPUT:
                 $output = $registers[$params[0]];
+                $outputSet = true;
                 break;
 
             case OP_JUMP_IF_TRUE:
@@ -85,7 +87,8 @@ function runProgram(array &$registers, int $input): int
         }
     }
 
-    return $output;
+    // If no output instruction was executed, return the first register value instead
+    return $outputSet ? $output : $registers[0];
 }
 
 function getParams(int $opCode, string $op, int $stepToExecute, array $registers): array

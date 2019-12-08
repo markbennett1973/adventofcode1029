@@ -15,7 +15,7 @@ function part1(): int
 {
     $program = loadProgram(INPUT_FILE);
     $input = 1;
-    return runProgram($program, $input);
+    return runProgram($program, [$input]);
 }
 
 // part 1 5182797
@@ -24,7 +24,7 @@ function part2(): int
 {
     $program = loadProgram(INPUT_FILE);
     $input = 5;
-    return runProgram($program, $input);
+    return runProgram($program, [$input]);
 }
 
 function runTests()

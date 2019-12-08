@@ -9,13 +9,12 @@ const INPUT_FILE = 'day2input.txt';
 echo 'Part 1: ' . part1() . "\n";
 echo 'Part 2: ' . part2() . "\n";
 
-function part1(): string
+function part1(): int
 {
     $registers = loadProgram(INPUT_FILE);
     $registers[1] = 12;
     $registers[2] = 2;
-    runProgram($registers, 0);
-    return (string) $registers[0];
+    return runProgram($registers, []);
 }
 
 function part2(): string
@@ -28,9 +27,9 @@ function part2(): string
             $registers = loadProgram(INPUT_FILE);
             $registers[1] = $noun;
             $registers[2] = $verb;
-            runProgram($registers, 0);
+            $output = runProgram($registers, []);
 
-            if ($registers[0] === $target) {
+            if ($output === $target) {
                 return (string) (100 * $noun + $verb);
             }
         }
