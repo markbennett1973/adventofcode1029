@@ -52,7 +52,7 @@ function runProgram(array $registers, array $inputs): int
                 break;
 
             case OP_OUTPUT:
-                $output = $registers[$params[0]];
+                $output = $params[0];
                 $outputSet = true;
                 break;
 
@@ -99,7 +99,7 @@ function getParams(int $opCode, string $op, int $stepToExecute, array $registers
     for ($i = 0; $i < $parameterCount; $i++) {
         $registerIndex = $stepToExecute + $i + 1;
         // The last parameter is always a position
-        if ($i === $parameterCount - 1) {
+        if (isWriteParameter($opCode, $i)) {
             $params[$i] = $registers[$registerIndex];
         } elseif ($parameterModes[$i] === BY_VAL) {
             $params[$i] = $registers[$registerIndex];
@@ -110,6 +110,23 @@ function getParams(int $opCode, string $op, int $stepToExecute, array $registers
     }
 
     return $params;
+}
+
+function isWriteParameter(int $opCode, int $paramPosition): bool
+{
+    switch ($opCode) {
+        case OP_ADD:
+        case OP_MULTIPLY:
+        case OP_LESS_THAN:
+        case OP_EQUALS:
+            return $paramPosition === 2;
+
+        case OP_INPUT:
+            return $paramPosition === 0;
+
+        default:
+            return false;
+    }
 }
 
 function getParameterCount(int $opCode): int

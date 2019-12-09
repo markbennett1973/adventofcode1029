@@ -6,7 +6,7 @@ include('computer.php');
 
 const INPUT_FILE = 'day5input.txt';
 
-// runTests();
+//runTests();
 
 echo 'Part 1: ' . part1() . "\n";
 echo 'Part 2: ' . part2() . "\n";
@@ -42,18 +42,18 @@ function runTests()
     for ($i = 0; $i <= 3; $i++) {
         print "Testing program " . ($i + 1) . ":\n";
         for ($input = 6; $input <= 10; $input++) {
-            print "$input gives " . runProgram($testPrograms[$i], $input) . "\n";
+            print "$input gives " . runProgram($testPrograms[$i], [$input]) . "\n";
         }
     }
 
     for ($i = 4; $i <= 5; $i++) {
         print "Testing program " . ($i + 1) . ":\n";
         for ($input = -3; $input <= 3; $input++) {
-            print "$input gives " . runProgram($testPrograms[$i], $input) . "\n";
+            print "$input gives " . runProgram($testPrograms[$i], [$input]) . "\n";
         }
     }
 
     for ($input = 6; $input <= 10; $input++) {
-        print "$input gives " . runProgram($testPrograms[6], $input) . "\n";
+        print "$input gives " . runProgram($testPrograms[6], [$input]) . "\n";
     }
 }
