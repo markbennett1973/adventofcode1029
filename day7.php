@@ -6,12 +6,8 @@ include('computer.php');
 
 const INPUT_FILE = 'day7input.txt';
 
-/**
- * Code passes all tests, but actual problem input errors. Retry when bug from day 5 is fixed.
- */
-
 echo 'Part 1: ' . part1() . "\n";
-//echo 'Part 2: ' . part2() . "\n";
+echo 'Part 2: ' . part2() . "\n";
 
 function part1(): int
 {
@@ -29,7 +25,7 @@ function part2(): int
 {
     $program = loadProgram(INPUT_FILE);
     $input = 5;
-    return runProgram($program, $input);
+    return runProgram($program, [$input]);
 }
 
 function getFinalStageOutput(array $program, array $phases): int

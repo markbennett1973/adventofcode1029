@@ -4,18 +4,29 @@ declare(strict_types = 1);
 
 const INPUT_FILE = 'day10input.txt';
 
-echo 'Part 1: ' . part1() . "\n";
-echo 'Part 2: ' . part2() . "\n";
+const SPACE = 0;
+const ASTEROID = 1;
+const LASER = 2;
 
-function part1(): int
-{
-    $map = getMap();
-    return getMaxViews($map);
-}
+$map = getMap();
+$bestCoords = getBestCoords($map);
 
-function part2(): string
-{
-    return '';
+// Part 1:
+$visible = countVisibleFromPoint($map, $bestCoords[0], $bestCoords[1]);
+print "$visible asteroids visible from " . $bestCoords[0] . ', ' . $bestCoords[1] . "\n";
+
+// Part 2:
+$laserRow = $bestCoords[0];
+$laserCol = $bestCoords[1];
+$map[$laserRow][$laserCol] = LASER;
+$currentBearing = -1;
+$destroyedCount = 0;
+while (countAsteroids($map) > 0) {
+    $destroyed = fireLaser($map, $laserRow, $laserCol, $currentBearing);
+    $currentBearing = getBearing($laserRow, $laserCol, $destroyed[0], $destroyed[1]);
+    $destroyedCount++;
+    print "Removed $destroyedCount - " . $destroyed[1] . ', ' . $destroyed[0] . "\n";
+
 }
 
 function getMap(): array
@@ -25,27 +36,31 @@ function getMap(): array
     foreach (explode("\n", $input) as $row => $rowContent) {
         $cols = strlen($rowContent);
         for ($col = 0; $col < $cols; $col++) {
-            $map[$row][$col] = $rowContent[$col] === '#' ? 1 : 0;
+            $map[$row][$col] = $rowContent[$col] === '#' ? ASTEROID : SPACE;
         }
     }
 
     return $map;
 }
 
-function getMaxViews(array $map): int
+function getBestCoords(array $map): array
 {
     $maxViews = 0;
+    $bestCoords = [];
 
     foreach ($map as $row => $cols) {
         foreach ($cols as $col => $hasAsteroid) {
             if ($hasAsteroid) {
                 $views = countVisibleFromPoint($map, $row, $col);
-                $maxViews = $views > $maxViews ? $views : $maxViews;
+                if ($views > $maxViews) {
+                    $maxViews = $views;
+                    $bestCoords = [$row, $col];
+                }
             }
         }
     }
 
-    return $maxViews;
+    return $bestCoords;
 }
 
 function countVisibleFromPoint(array $map, int $pointRow, int $pointCol): int
@@ -76,7 +91,7 @@ function isAsteroidVisibleFromPoint(array $map, $row, $col, $pointRow, $pointCol
     foreach ($intermediateCells as $cell) {
         $cellRow = $cell[0];
         $cellCol = $cell[1];
-        if ($map[$cellRow][$cellCol] === 1) {
+        if ($map[$cellRow][$cellCol] === ASTEROID) {
             return false;
         }
     }
@@ -100,17 +115,15 @@ function calculateIntermediateCells(int $startRow, int $startCol, int $endRow, i
 {
     $intermediateCells = [];
 
-    // Always check in a positive gradient direction - makes the maths a bit simpler. So if $end < $start, swap them.
-    if ($endRow < $startRow) {
-        $tmp = $endRow;
-        $endRow = $startRow;
-        $startRow = $tmp;
-    }
-
+    // Always check in a positive columns direction - makes the maths a bit simpler. So if $end < $start, swap them.
     if ($endCol < $startCol) {
         $tmp = $endCol;
         $endCol = $startCol;
         $startCol = $tmp;
+
+        $tmp = $endRow;
+        $endRow = $startRow;
+        $startRow = $tmp;
     }
 
     $dRow = $endRow - $startRow;
@@ -118,7 +131,7 @@ function calculateIntermediateCells(int $startRow, int $startCol, int $endRow, i
 
     // Special case for vertical lines - we can't calculate a gradient
     if ($dCol === 0) {
-        return calculateVerticalIntermediateCells($startRow, $startCol, $endRow, $endCol);
+        return calculateVerticalIntermediateCells($startRow, $startCol, $endRow);
     }
 
     $gradient = $dRow / $dCol;
@@ -135,8 +148,15 @@ function calculateIntermediateCells(int $startRow, int $startCol, int $endRow, i
 }
 
 
-function calculateVerticalIntermediateCells(int $startRow, int $startCol, int $endRow, int $endCol): array
+function calculateVerticalIntermediateCells(int $startRow, int $startCol, int $endRow): array
 {
+    // if start < end, swap them
+    if ($startRow > $endRow) {
+        $tmp = $endRow;
+        $endRow = $startRow;
+        $startRow = $tmp;
+    }
+
     $intermediateCells = [];
     // don't include the start and end points
     for ($row = $startRow + 1; $row < $endRow; $row++) {
@@ -144,4 +164,102 @@ function calculateVerticalIntermediateCells(int $startRow, int $startCol, int $e
     }
 
     return $intermediateCells;
+}
+
+function countAsteroids(array $map): int
+{
+    $count = 0;
+    foreach ($map as $row => $cols) {
+        foreach ($cols as $col => $content) {
+            if ($map[$row][$col] === ASTEROID) {
+                $count++;
+            }
+        }
+    }
+
+    return $count;
+}
+
+/**
+ * Fire the laser from $laserRow, $laserCol. Find the first asteroid in $map where angle > $currentAngle
+ * Remove asteroid from map
+ * Return coordinates of removed asteroid
+ *
+ * @param array $map
+ * @param int $laserRow
+ * @param int $laserCol
+ * @param $currentBearing
+ * @return array
+ */
+function fireLaser(array &$map, int $laserRow, int $laserCol, $currentBearing): array
+{
+    foreach ($map as $row => $cols) {
+        foreach ($cols as $col => $contents) {
+            if ($contents === 1) {
+                if (isAsteroidVisibleFromPoint($map, $row, $col, $laserRow, $laserCol)) {
+                    $bearing = getBearing($laserRow, $laserCol, $row, $col);
+                    $bearings[$bearing] = [$row, $col];
+                }
+            }
+        }
+    }
+
+    // find first asteroid where angle > $currentAngle
+    ksort($bearings);
+
+    $nextBearing = null;
+    foreach ($bearings as $bearing => $asteroid) {
+        if ($bearing > $currentBearing) {
+            $nextBearing = $bearing;
+            break;
+        }
+    }
+
+    // We may need to wrap around if we're near 360 degrees and there are no following bearings
+    if ($nextBearing ===  null) {
+        $currentBearing -= 360;
+        foreach ($bearings as $bearing => $asteroid) {
+            if ($bearing > $currentBearing) {
+                $nextBearing = $bearing;
+                break;
+            }
+        }
+    }
+
+    // remove from map
+    $targetRow = $bearings[$nextBearing][0];
+    $targetCol = $bearings[$nextBearing][1];
+    $map[$targetRow][$targetCol] = 0;
+
+    // return coordinates of removed asteroid
+    return $bearings[$nextBearing];
+}
+
+function getBearing($sourceRow, $sourceCol, $destRow, $destCol): float
+{
+    $dX = $destRow - $sourceRow;
+    $dY = $destCol - $sourceCol;
+    $bearing = rad2deg(atan2($dX, $dY));
+    $bearing += 90;
+
+    if ($bearing < 0) {
+        $bearing += 360;
+    }
+
+    if ($bearing > 360) {
+        $bearing -= 360;
+    }
+
+    return $bearing;
+}
+
+function testGetBearing() {
+    print getBearing(0, 0, -1, 0) . " should be 0\n";
+    print getBearing(0, 0, 0, 1) . " should be 90\n";
+    print getBearing(0, 0, 1, 0) . " should be 180\n";
+    print getBearing(0, 0, 0, -1) . " should be 270\n";
+    print getBearing(0, 0, -1, 1) . " should be 45\n";
+    print getBearing(0, 0, 1, 1) . " should be 135\n";
+    print getBearing(0, 0, 1, -1) . " should be 225\n";
+    print getBearing(0, 0, -1, -1) . " should be 315\n";
 }
