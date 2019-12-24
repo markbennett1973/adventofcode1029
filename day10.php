@@ -193,12 +193,14 @@ function countAsteroids(array $map): int
  */
 function fireLaser(array &$map, int $laserRow, int $laserCol, $currentBearing): array
 {
+    $currentMilliBearing = $currentBearing * 1000;
     foreach ($map as $row => $cols) {
         foreach ($cols as $col => $contents) {
             if ($contents === 1) {
                 if (isAsteroidVisibleFromPoint($map, $row, $col, $laserRow, $laserCol)) {
-                    $bearing = getBearing($laserRow, $laserCol, $row, $col);
-                    $bearings[$bearing] = [$row, $col];
+                    $milliBearing = getBearing($laserRow, $laserCol, $row, $col);
+                    $milliBearing = $milliBearing * 1000;
+                    $bearings[$milliBearing] = [$row, $col];
                 }
             }
         }
@@ -207,32 +209,32 @@ function fireLaser(array &$map, int $laserRow, int $laserCol, $currentBearing): 
     // find first asteroid where angle > $currentAngle
     ksort($bearings);
 
-    $nextBearing = null;
-    foreach ($bearings as $bearing => $asteroid) {
-        if ($bearing > $currentBearing) {
-            $nextBearing = $bearing;
+    $nextMilliBearing = null;
+    foreach ($bearings as $milliBearing => $asteroid) {
+        if ($milliBearing > $currentMilliBearing) {
+            $nextMilliBearing = $milliBearing;
             break;
         }
     }
 
     // We may need to wrap around if we're near 360 degrees and there are no following bearings
-    if ($nextBearing ===  null) {
-        $currentBearing -= 360;
-        foreach ($bearings as $bearing => $asteroid) {
-            if ($bearing > $currentBearing) {
-                $nextBearing = $bearing;
+    if ($nextMilliBearing ===  null) {
+        $currentMilliBearing -= 360000;
+        foreach ($bearings as $milliBearing => $asteroid) {
+            if ($milliBearing > $currentMilliBearing) {
+                $nextMilliBearing = $milliBearing;
                 break;
             }
         }
     }
 
     // remove from map
-    $targetRow = $bearings[$nextBearing][0];
-    $targetCol = $bearings[$nextBearing][1];
+    $targetRow = $bearings[$nextMilliBearing][0];
+    $targetCol = $bearings[$nextMilliBearing][1];
     $map[$targetRow][$targetCol] = 0;
 
     // return coordinates of removed asteroid
-    return $bearings[$nextBearing];
+    return $bearings[$nextMilliBearing];
 }
 
 function getBearing($sourceRow, $sourceCol, $destRow, $destCol): float
