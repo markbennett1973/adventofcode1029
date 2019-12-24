@@ -32,7 +32,7 @@ function loadProgram(string $filepath): array
  * @return array
  * @throws Exception
  */
-function runProgram(array $registers, array $inputs): array
+function runProgram(array $registers, array $inputs, $outputCallback = null): array
 {
     $stepToExecute = 0;
     $output = [];
@@ -43,7 +43,6 @@ function runProgram(array $registers, array $inputs): array
         $opCode = (int) substr($op, -2);
         // print "Execute $opCode from position $stepToExecute\n";
         $params = getParams($opCode, $op, $stepToExecute, $registers, $relativeBase);
-
 
         $incrementStepCounter = true;
         switch ($opCode) {
@@ -61,6 +60,12 @@ function runProgram(array $registers, array $inputs): array
 
             case OP_OUTPUT:
                 $output[] = $params[0];
+                if (is_callable($outputCallback)) {
+                    if ($newInput = $outputCallback($output)) {
+                        $inputs = $newInput;
+                        $output = [];
+                    }
+                }
                 break;
 
             case OP_JUMP_IF_TRUE:
