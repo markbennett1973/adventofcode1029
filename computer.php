@@ -32,7 +32,7 @@ function loadProgram(string $filepath): array
  * @return array
  * @throws Exception
  */
-function runProgram(array $registers, array $inputs, $outputCallback = null): array
+function runProgram(array $registers, array $inputs, $outputCallback = null, $inputCallback = null): array
 {
     $stepToExecute = 0;
     $output = [];
@@ -55,7 +55,11 @@ function runProgram(array $registers, array $inputs, $outputCallback = null): ar
                 break;
 
             case OP_INPUT:
-                $registers[$params[0]] = array_shift($inputs);
+                if (is_callable($inputCallback)) {
+                    $registers[$params[0]] = $inputCallback();
+                } else {
+                    $registers[$params[0]] = array_shift($inputs);
+                }
                 break;
 
             case OP_OUTPUT:
