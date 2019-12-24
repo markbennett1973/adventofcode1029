@@ -10,10 +10,12 @@ const OP_JUMP_IF_TRUE = 5;
 const OP_JUMP_IF_FALSE = 6;
 const OP_LESS_THAN = 7;
 const OP_EQUALS = 8;
+const OP_ADJUST_RELATIVE_BASE = 9;
 const OP_EXIT = 99;
 
 const BY_REF = 0;
 const BY_VAL = 1;
+const BY_RELATIVE_REF = 2;
 
 function loadProgram(string $filepath): array
 {
@@ -24,17 +26,23 @@ function loadProgram(string $filepath): array
     }, $lines);
 }
 
-function runProgram(array $registers, array $inputs): int
+/**
+ * @param array $registers
+ * @param array $inputs
+ * @return array
+ * @throws Exception
+ */
+function runProgram(array $registers, array $inputs): array
 {
     $stepToExecute = 0;
-    $output = 0;
-    $outputSet = false;
+    $output = [];
+    $relativeBase = 0;
 
     while ($registers[$stepToExecute] != OP_EXIT) {
         $op = (string) $registers[$stepToExecute];
         $opCode = (int) substr($op, -2);
-        //print "Execute $opCode from position $stepToExecute\n";
-        $params = getParams($opCode, $op, $stepToExecute, $registers);
+        print "Execute $opCode from position $stepToExecute\n";
+        $params = getParams($opCode, $op, $stepToExecute, $registers, $relativeBase);
 
 
         $incrementStepCounter = true;
@@ -52,8 +60,7 @@ function runProgram(array $registers, array $inputs): int
                 break;
 
             case OP_OUTPUT:
-                $output = $params[0];
-                $outputSet = true;
+                $output[] = $params[0];
                 break;
 
             case OP_JUMP_IF_TRUE:
@@ -78,6 +85,10 @@ function runProgram(array $registers, array $inputs): int
                 $registers[$params[2]] = ($params[0] === $params[1]) ? 1 : 0;
                 break;
 
+            case OP_ADJUST_RELATIVE_BASE:
+                $relativeBase = $relativeBase + $params[0];
+                break;
+
             default:
                 die('Unexpected op code at position ' . $stepToExecute . ': ' . $registers[$stepToExecute] . "\n");
         }
@@ -88,10 +99,23 @@ function runProgram(array $registers, array $inputs): int
     }
 
     // If no output instruction was executed, return the first register value instead
-    return $outputSet ? $output : $registers[0];
+    if (count($output) === 0) {
+        $output[] = $registers[0];
+    }
+
+    return $output;
 }
 
-function getParams(int $opCode, string $op, int $stepToExecute, array $registers): array
+/**
+ * @param int $opCode
+ * @param string $op
+ * @param int $stepToExecute
+ * @param array $registers
+ * @param int $relativeBase
+ * @return array
+ * @throws Exception
+ */
+function getParams(int $opCode, string $op, int $stepToExecute, array $registers, int $relativeBase): array
 {
     $parameterCount = getParameterCount($opCode);
     $parameterModes = getParameterModes($op, $parameterCount);
@@ -100,16 +124,29 @@ function getParams(int $opCode, string $op, int $stepToExecute, array $registers
         $registerIndex = $stepToExecute + $i + 1;
         // The last parameter is always a position
         if (isWriteParameter($opCode, $i)) {
-            $params[$i] = $registers[$registerIndex];
+            $params[$i] = getRegisterValue($registers, $registerIndex);
         } elseif ($parameterModes[$i] === BY_VAL) {
-            $params[$i] = $registers[$registerIndex];
+            $params[$i] = getRegisterValue($registers, $registerIndex);
         } else {
-            $paramPos = $registers[$registerIndex];
-            $params[$i] = $registers[$paramPos];
+            $paramPos = getRegisterValue($registers, $registerIndex);
+
+            if ($parameterModes[$i] === BY_RELATIVE_REF) {
+                $paramPos = $paramPos + $relativeBase;
+            }
+            $params[$i] = getRegisterValue($registers, $paramPos);
         }
     }
 
     return $params;
+}
+
+function getRegisterValue(array $registers, int $position): int
+{
+    if (array_key_exists($position, $registers)) {
+        return $registers[$position];
+    }
+
+    return 0;
 }
 
 function isWriteParameter(int $opCode, int $paramPosition): bool
@@ -129,6 +166,11 @@ function isWriteParameter(int $opCode, int $paramPosition): bool
     }
 }
 
+/**
+ * @param int $opCode
+ * @return int
+ * @throws Exception
+ */
 function getParameterCount(int $opCode): int
 {
     switch ($opCode) {
@@ -144,6 +186,7 @@ function getParameterCount(int $opCode): int
 
         case OP_INPUT:
         case OP_OUTPUT:
+        case OP_ADJUST_RELATIVE_BASE:
             return 1;
 
         default:
@@ -151,6 +194,12 @@ function getParameterCount(int $opCode): int
     }
 }
 
+/**
+ * @param string $op
+ * @param int $parameterCount
+ * @return array
+ * @throws Exception
+ */
 function getParameterModes(string $op, int $parameterCount): array
 {
     $modes = [];
@@ -161,7 +210,19 @@ function getParameterModes(string $op, int $parameterCount): array
         $pos = $len - $i - 1;
         if ($pos >= 0) {
             $modeChar = substr($op, $pos, 1);
-            $mode = $modeChar === "0" ? BY_REF : BY_VAL;
+            switch ($modeChar) {
+                case "0":
+                    $mode = BY_REF;
+                    break;
+                case "1":
+                    $mode = BY_VAL;
+                    break;
+                case "2":
+                    $mode = BY_RELATIVE_REF;
+                    break;
+                default:
+                    throw new Exception("Uknown mode character: $modeChar");
+            }
         } else {
             $mode = BY_REF;
         }
