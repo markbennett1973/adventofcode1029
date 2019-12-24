@@ -16,9 +16,11 @@ function part1(): int
     return $output[0];
 }
 
-function part2(): string
+function part2(): int
 {
-    return '';
+    $program = loadProgram(INPUT_FILE);
+    $output = runProgram($program, [2]);
+    return $output[0];
 }
 
 function getInput(): array

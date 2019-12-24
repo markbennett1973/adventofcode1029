@@ -41,7 +41,7 @@ function runProgram(array $registers, array $inputs): array
     while ($registers[$stepToExecute] != OP_EXIT) {
         $op = (string) $registers[$stepToExecute];
         $opCode = (int) substr($op, -2);
-        print "Execute $opCode from position $stepToExecute\n";
+        // print "Execute $opCode from position $stepToExecute\n";
         $params = getParams($opCode, $op, $stepToExecute, $registers, $relativeBase);
 
 
@@ -122,9 +122,12 @@ function getParams(int $opCode, string $op, int $stepToExecute, array $registers
     $params = [];
     for ($i = 0; $i < $parameterCount; $i++) {
         $registerIndex = $stepToExecute + $i + 1;
-        // The last parameter is always a position
+        // The last parameter is always a position, but it may be a relative position
         if (isWriteParameter($opCode, $i)) {
             $params[$i] = getRegisterValue($registers, $registerIndex);
+            if ($parameterModes[$i] === BY_RELATIVE_REF) {
+                $params[$i] += $relativeBase;
+            }
         } elseif ($parameterModes[$i] === BY_VAL) {
             $params[$i] = getRegisterValue($registers, $registerIndex);
         } else {
