@@ -5,7 +5,7 @@ declare(strict_types = 1);
 const INPUT_FILE = 'day12input.txt';
 
 echo 'Part 1: ' . part1() . "\n";
-// echo 'Part 2: ' . part2() . "\n";
+echo 'Part 2: ' . part2() . "\n";
 
 function part1(): int
 {
@@ -13,13 +13,7 @@ function part1(): int
     $moons = getInput();
 
     for ($step = 0; $step < $maxSteps; $step++) {
-        foreach (getPairs() as $pair) {
-            $moons[$pair[0]]->updateVelocity($moons[$pair[1]]);
-        }
-
-        foreach ($moons as $moon) {
-            $moon->move();
-        }
+        moveAllMoons($moons);
     }
 
     $energy = 0;
@@ -32,44 +26,28 @@ function part1(): int
 
 function part2(): int
 {
-    $moons = getInput();
-    $previousPositions = [];
-    $steps = 0;
+    $periodX = getPeriod('x', getInput());
+    $periodY = getPeriod('y', getInput());
+    $periodZ = getPeriod('z', getInput());
 
-    while (true) {
-        foreach (getPairs() as $pair) {
-            $moons[$pair[0]]->updateVelocity($moons[$pair[1]]);
-        }
-
-        foreach ($moons as $moon) {
-            $moon->move();
-        }
-
-        $hash = getHash($moons);
-        if (array_key_exists($hash, $previousPositions)) {
-            return $steps;
-        }
-
-        $previousPositions[$hash] = '';
-        $steps++;
-        if ($steps % 10000 === 0) {
-            print 'Done ' . number_format($steps) . " steps\n";
-        }
-    }
+    $lcm1 = lcm($periodX, $periodY);
+    return lcm($lcm1, $periodZ);
 }
 
-/**
- * @param array|Moon $moons
- * @return string
- */
-function getHash(array $moons): string
+function  lcm(int $a, int $b): int
 {
-    $hash = '';
-    foreach ($moons as $moon) {
-        $hash .= $moon->getState();
-    }
+    return $a * ($b / gcd($a, $b));
+}
 
-    return sha1($hash);
+function gcd(int $a, int $b): int
+{
+    while ($b > 0)
+    {
+        $temp = $b;
+        $b = $a % $b; // % is remainder
+        $a = $temp;
+    }
+    return $a;
 }
 
 /**
@@ -104,6 +82,59 @@ function getPairs(): array
     ];
 }
 
+/**
+ * @param array|Moon[] $moons
+ */
+function moveAllMoons(array $moons)
+{
+    foreach (getPairs() as $pair) {
+        $moons[$pair[0]]->updateVelocity($moons[$pair[1]]);
+    }
+
+    foreach ($moons as $moon) {
+        $moon->move();
+    }
+}
+
+/**
+ * @param string $axis
+ * @param array|Moon[] $moons
+ * @return int
+ */
+function getPeriod(string $axis, array $moons): int
+{
+    $steps = 0;
+    do
+    {
+         moveAllMoons($moons);
+        $steps++;
+    } while (!allAtStart($axis, $moons));
+
+    return $steps;
+}
+
+/**
+ * @param string $axis
+ * @param array|Moon[] $moons
+ * @return bool
+ */
+function allAtStart(string $axis, array $moons): bool
+{
+    foreach ($moons as $moon) {
+        if (!$moon->isAtStart($axis)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function lowestCommonMultiple(array $periods): int
+{
+    // TODO
+    return 0;
+}
+
 class Moon {
     private int $x;
     private int $y;
@@ -111,6 +142,7 @@ class Moon {
     protected int $vx;
     protected int $vy;
     protected int $vz;
+    private $initialStates;
 
     public function __construct(string $initialPosition)
     {
@@ -124,6 +156,15 @@ class Moon {
         $this->vx = 0;
         $this->vy = 0;
         $this->vz = 0;
+
+        $this->initialStates = [
+            'x' => $this->x,
+            'y' => $this->y,
+            'z' => $this->z,
+            'vx' => $this->vx,
+            'vy' => $this->vy,
+            'vz' => $this->vz,
+        ];
     }
 
     public function updateVelocity(Moon $moon)
@@ -178,5 +219,19 @@ class Moon {
         $pot = abs($this->x) + abs($this->y) + abs($this->z);
         $kin = abs($this->vx) + abs($this->vy) + abs($this->vz);
         return $pot * $kin;
+    }
+
+    public function isAtStart(string $axis): bool
+    {
+        if ($this->{$axis} !== $this->initialStates[$axis]) {
+            return false;
+        }
+
+        $velocityProperty = 'v' . $axis;
+        if ($this->{$velocityProperty} !== $this->initialStates[$velocityProperty]) {
+            return false;
+        }
+
+        return true;
     }
 }
