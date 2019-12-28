@@ -9,6 +9,35 @@ echo 'Part 2: ' . part2() . "\n";
 
 function part1(): int
 {
+    $requirements = runReaction(false);
+    foreach ($requirements as $requirement) {
+        if ($requirement->compound === 'ORE') {
+            return (int) $requirement->quantity;
+        }
+    }
+
+    throw new Exception('No ORE requirement left!');
+}
+
+function part2(): float
+{
+    $requirements = runReaction(true);
+    $orePerFuel = null;
+    foreach ($requirements as $requirement) {
+        if ($requirement->compound === 'ORE') {
+            $orePerFuel = $requirement->quantity;
+        }
+    }
+
+    return  floor(1000000000000 / $orePerFuel);
+}
+
+/**
+ * @param bool $exactQuantities
+ * @return array|Reagent[]
+ */
+function runReaction(bool $exactQuantities): array
+{
     $reactions = getInput();
 
     /** @var Reagent[] $requirements */
@@ -22,24 +51,13 @@ function part1(): int
             }
 
             $reaction = findReactionForProduct($reactions, $requirement);
-            $qtyRequired = getQtyRequired($requirement, $reaction);
+            $qtyRequired = getQtyRequired($requirement, $reaction, $exactQuantities);
             addRequirements($requirements, $reaction, $qtyRequired);
             removeProducts($requirements, $reaction, $qtyRequired);
         }
     }
 
-    foreach ($requirements as $requirement) {
-        if ($requirement->compound === 'ORE') {
-            return $requirement->quantity;
-        }
-    }
-
-    throw new Exception('No ORE requirement left!');
-}
-
-function part2(): string
-{
-    return '';
+    return $requirements;
 }
 
 function getInput(): array
@@ -71,20 +89,24 @@ function findReactionForProduct(array $reactions, Reagent $requirement): ?Reacti
     return null;
 }
 
-function getQtyRequired(Reagent $requirement, Reaction $reaction): int
+function getQtyRequired(Reagent $requirement, Reaction $reaction, bool $exact): float
 {
     $qtyRequired = $requirement->quantity;
     $qtyProduced = $reaction->productReagent->quantity;
 
-    return (int) ceil($qtyRequired / $qtyProduced);
+    if ($exact) {
+        return $qtyRequired / $qtyProduced;
+    } else {
+        return (int)ceil($qtyRequired / $qtyProduced);
+    }
 }
 
 /**
  * @param array|Reagent $requirements
  * @param Reaction $reaction
- * @param int $qtyRequired
+ * @param float $qtyRequired
  */
-function addRequirements(array &$requirements, Reaction $reaction, int $qtyRequired)
+function addRequirements(array &$requirements, Reaction $reaction, float $qtyRequired)
 {
     foreach ($reaction->sourceReagents as $sourceReagent) {
         // See if we already have this compound in our requirements
@@ -113,9 +135,9 @@ function addRequirements(array &$requirements, Reaction $reaction, int $qtyRequi
 /**
  * @param array|Reagent[] $requirements
  * @param Reaction $reaction
- * @param int $qtyRequired
+ * @param float $qtyRequired
  */
-function removeProducts(array &$requirements, Reaction $reaction, int $qtyRequired)
+function removeProducts(array &$requirements, Reaction $reaction, float $qtyRequired)
 {
     foreach ($requirements as $index => $reagent) {
         if ($reagent->compound === $reaction->productReagent->compound) {
@@ -169,7 +191,7 @@ class Reaction {
 
 class Reagent {
     public string $compound;
-    public int $quantity;
+    public float $quantity;
 
     /**
      * Reagent constructor.
@@ -180,6 +202,6 @@ class Reagent {
     {
         $parts = explode(' ', trim($compoundString));
         $this->compound = trim($parts[1]);
-        $this->quantity = (int) $parts[0];
+        $this->quantity = (float) $parts[0];
     }
 }
