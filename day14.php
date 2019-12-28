@@ -9,39 +9,50 @@ echo 'Part 2: ' . part2() . "\n";
 
 function part1(): int
 {
-    $requirements = runReaction(false);
+    $requirements = runReaction('1 FUEL');
+    return getOreQuantity($requirements);
+}
+
+function part2(): float
+{
+    $minFuel = 11788280;
+    $maxFuel = 11788290;
+    $fuelStep = 1;
+
+    for ($targetFuel = $minFuel; $targetFuel <= $maxFuel; $targetFuel += $fuelStep) {
+        $requirements = runReaction($targetFuel . ' FUEL');
+        $oreRequired = getOreQuantity($requirements);
+        print sprintf(
+            "%s ore produces %s fuel\n",
+            number_format($oreRequired),
+            number_format($targetFuel)
+        );
+    }
+
+    return $targetFuel;
+}
+
+function getOreQuantity(array $requirements): int
+{
     foreach ($requirements as $requirement) {
         if ($requirement->compound === 'ORE') {
             return (int) $requirement->quantity;
         }
     }
 
-    throw new Exception('No ORE requirement left!');
-}
-
-function part2(): float
-{
-    $requirements = runReaction(true);
-    $orePerFuel = null;
-    foreach ($requirements as $requirement) {
-        if ($requirement->compound === 'ORE') {
-            $orePerFuel = $requirement->quantity;
-        }
-    }
-
-    return  floor(1000000000000 / $orePerFuel);
+    return 0;
 }
 
 /**
- * @param bool $exactQuantities
+ * @param string $target
  * @return array|Reagent[]
  */
-function runReaction(bool $exactQuantities): array
+function runReaction(string $target): array
 {
     $reactions = getInput();
 
     /** @var Reagent[] $requirements */
-    $requirements[] = new Reagent('1 FUEL');
+    $requirements[] = new Reagent($target);
 
     while (!isReactionComplete($requirements)) {
         foreach ($requirements as $index => $requirement) {
@@ -51,7 +62,7 @@ function runReaction(bool $exactQuantities): array
             }
 
             $reaction = findReactionForProduct($reactions, $requirement);
-            $qtyRequired = getQtyRequired($requirement, $reaction, $exactQuantities);
+            $qtyRequired = getQtyRequired($requirement, $reaction);
             addRequirements($requirements, $reaction, $qtyRequired);
             removeProducts($requirements, $reaction, $qtyRequired);
         }
@@ -89,29 +100,26 @@ function findReactionForProduct(array $reactions, Reagent $requirement): ?Reacti
     return null;
 }
 
-function getQtyRequired(Reagent $requirement, Reaction $reaction, bool $exact): float
+function getQtyRequired(Reagent $requirement, Reaction $reaction): int
 {
     $qtyRequired = $requirement->quantity;
     $qtyProduced = $reaction->productReagent->quantity;
 
-    if ($exact) {
-        return $qtyRequired / $qtyProduced;
-    } else {
-        return (int)ceil($qtyRequired / $qtyProduced);
-    }
+    return (int)ceil($qtyRequired / $qtyProduced);
 }
 
 /**
  * @param array|Reagent $requirements
  * @param Reaction $reaction
- * @param float $qtyRequired
+ * @param int $qtyRequired
  */
-function addRequirements(array &$requirements, Reaction $reaction, float $qtyRequired)
+function addRequirements(array &$requirements, Reaction $reaction, int $qtyRequired)
 {
     foreach ($reaction->sourceReagents as $sourceReagent) {
         // See if we already have this compound in our requirements
         $found = false;
 
+        $index = 0;
         foreach ($requirements as $index => $requirement) {
             if ($requirement->compound === $sourceReagent->compound) {
                 $found = true;
@@ -135,9 +143,9 @@ function addRequirements(array &$requirements, Reaction $reaction, float $qtyReq
 /**
  * @param array|Reagent[] $requirements
  * @param Reaction $reaction
- * @param float $qtyRequired
+ * @param int $qtyRequired
  */
-function removeProducts(array &$requirements, Reaction $reaction, float $qtyRequired)
+function removeProducts(array &$requirements, Reaction $reaction, int $qtyRequired)
 {
     foreach ($requirements as $index => $reagent) {
         if ($reagent->compound === $reaction->productReagent->compound) {
@@ -191,7 +199,7 @@ class Reaction {
 
 class Reagent {
     public string $compound;
-    public float $quantity;
+    public int $quantity;
 
     /**
      * Reagent constructor.
@@ -202,6 +210,6 @@ class Reagent {
     {
         $parts = explode(' ', trim($compoundString));
         $this->compound = trim($parts[1]);
-        $this->quantity = (float) $parts[0];
+        $this->quantity = (int) $parts[0];
     }
 }
