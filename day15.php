@@ -74,7 +74,7 @@ function readMap()
 
 function outputCallback(array $output): array
 {
-    global $lastMovement, $foundPosition;
+    global $lastMovement;
     static $steps = 0;
 
     updateMapAndPosition($output[0]);
@@ -380,10 +380,5 @@ class Node extends Coord
         if ($parentNode instanceof Node) {
             $parentNode->childNode = $this;
         }
-    }
-
-    public static function createFromCoord(Coord $coord, Node $parentNode = null)
-    {
-        return new Node($coord->row, $coord->col, $parentNode);
     }
 }
